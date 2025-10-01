@@ -29,7 +29,7 @@ Build:
 docker build . -t vlang-cross:latest-trixie
 ```
 
-The container image is large (a little over 2GiB) due to the number of libraries
+The container image is large (almost 3GiB) due to the number of libraries
 required for cross-compilation. The size could actually be reduced, but that's
 what Debian provides by default in the `crossbuild-essential-*` packages. For
 the same reason, building the image isn't very fast (up to ~3 minutes for me).

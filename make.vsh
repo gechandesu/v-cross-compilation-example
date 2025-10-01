@@ -11,7 +11,7 @@ const program_version = os.getenv_opt('BUILD_PROG_VERSION') or { vmod_version() 
 const program_entrypoint = os.getenv_opt('BUILD_PROG_ENTRYPOINT') or { '.' }
 const output_dir = os.abs_path(os.norm_path(os.getenv_opt('BUILD_OUTPUT_DIR') or { 'release' }))
 const skip_targets = os.getenv('BUILD_SKIP_TARGETS')
-const common_vflags = os.getenv_opt('BUILD_COMMON_VFLAGS') or { '-prod,-cross' }
+const common_vflags = os.getenv_opt('BUILD_COMMON_VFLAGS') or { '-prod' }
 const common_cflags = os.getenv_opt('BUILD_COMMON_CFLAGS') or { '-static' }
 const debug = os.getenv('DEBUG')
 const vexe = @VEXE
@@ -60,6 +60,11 @@ const vexe = @VEXE
 		is the same as Linux `sha256sum` utility output. Is true by default.
 
 	See also Target sttruct definition in bottom of this file.
+
+	V'S SPECIAL ENVIRONMENT VARIABLES
+
+	    VCROSS_COMPILER_NAME    See vcross_compiler_name() in v.pref module.
+	    VCROSS_LINKER_NAME      See vcross_linker_name() in v.pref module.
 */
 
 const build_targets = [
@@ -95,7 +100,8 @@ const build_targets = [
 	},
 	Target{
 		// FreeBSD build for now is dynamically linked even if -cflags -static is passed.
-		// Also V forces the use of clang here, so -cc value doesn't matter.
+		// Also V forces the use of clang here (unless VCROSS_COMPILER_NAME envvar is set),
+		// so -cc value doesn't matter.
 		name:   'freebsd-amd64'
 		cc:     'clang'
 		vflags: ['-os', 'freebsd']
@@ -130,15 +136,11 @@ fn main() {
 		println(help_text)
 		exit(0)
 	}
-	mut context := build.context(default: 'release')
+	mut context := build.context(default: 'all')
 	mut targets := []string{}
 	for build_target in build_targets {
-		if build_target.disabled {
-			printdbg('Build target ${build_target.name} is disabled in build script')
-			continue
-		}
 		targets << build_target.name
-		context.artifact(
+		context.task(
 			name:       build_target.name
 			help:       'Make release build for ${build_target.name} target'
 			run:        fn [build_target] (t build.Task) ! {
@@ -151,16 +153,15 @@ fn main() {
 		)
 	}
 	context.task(
-		name:    'release'
+		name:    'all'
 		help:    'Make release builds for all target systems'
 		depends: targets
 		run:     |self| true
 	)
 	context.task(
-		name:       'clean'
-		help:       'Cleanup the output dir (${output_dir})'
-		run:        |self| cleanup()!
-		should_run: |self| true
+		name: 'clean'
+		help: 'Cleanup the output dir (${output_dir})'
+		run:  |self| cleanup()!
 	)
 	context.run()
 }
@@ -208,7 +209,7 @@ fn make_build(build_target Target) ! {
 	vargs << ['-o', artifact]
 	vargs << program_entrypoint
 
-	execute_command(vexe, vargs)!
+	execute_command(vexe, vargs, env: build_target.env)!
 
 	if build_target.calculate_sha256 {
 		sha256sum_file := artifact + '.sha256'
@@ -222,14 +223,15 @@ fn make_build(build_target Target) ! {
 }
 
 fn cleanup() ! {
-	path := output_dir
-	if os.is_dir(path) {
-		printdbg('Deleting the ${path} dir recursively...')
-		os.rmdir_all(path)!
-		printdbg('${path} is deleted')
-	} else {
-		printdbg('${path} does not exists or is not directory')
+	printdbg('Try to delete ${output_dir} recursively...')
+	os.rmdir_all(output_dir) or {
+		if err.code() == 2 {
+			printdbg('${output_dir} does not exists')
+		} else {
+			return err
+		}
 	}
+	printdbg('Cleanup done')
 }
 
 // Helper functions
@@ -259,11 +261,17 @@ fn is_command_present(cmd string) !bool {
 	return false
 }
 
-fn execute_command(executable string, args []string) ! {
+@[params]
+struct CommandOptions {
+	env map[string]string
+}
+
+fn execute_command(executable string, args []string, opts CommandOptions) ! {
 	path := os.find_abs_path_of_executable(executable) or { os.norm_path(executable) }
 	printdbg("Run '${path}' with arguments: ${args}")
 	mut proc := os.new_process(path)
 	proc.set_args(args)
+	proc.set_environment(opts.env)
 	proc.set_work_folder(os.getwd())
 	proc.run()
 	proc.wait()
@@ -289,8 +297,8 @@ struct Target {
 	cflags   []string
 	ldflags  []string
 	file_ext string
+	env      map[string]string
 
-	disabled         bool
 	common_vflags    bool = true
 	common_cflags    bool = true
 	calculate_sha256 bool = true
