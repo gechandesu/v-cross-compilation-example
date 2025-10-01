@@ -2,6 +2,7 @@
 
 import build
 import crypto.sha256
+import maps
 import os
 import term
 import v.vmod
@@ -271,7 +272,7 @@ fn execute_command(executable string, args []string, opts CommandOptions) ! {
 	printdbg("Run '${path}' with arguments: ${args}")
 	mut proc := os.new_process(path)
 	proc.set_args(args)
-	proc.set_environment(opts.env)
+	proc.set_environment(maps.merge(os.environ(), opts.env))
 	proc.set_work_folder(os.getwd())
 	proc.run()
 	proc.wait()
