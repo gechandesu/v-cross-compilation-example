@@ -10,8 +10,7 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/cache/apt/archives/* && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://github.com/vlang/v /opt/v && \
-    cd /opt/v && \
-    make && \
+    make -C /opt/v && \
     /opt/v/v symlink && \
     v version
 
@@ -36,4 +35,5 @@ WORKDIR /app
 
 USER 1000:1000
 
-ENV VMODULES=/tmp/.vmodules
+ENV VMODULES=/tmp/vmodules
+ENV VCACHE=/tmp/vcache

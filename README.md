@@ -14,7 +14,7 @@ Produced binaries:
 
 * Linux: `amd64`, `arm64`, `arm32` (`armhf`), `ppc64le`, `s390x`, `riscv64`
 * Windows: `amd64`
-* FreeBSD: `amd64`
+* ~~FreeBSD: `amd64`~~ (disabled for now)
 
 The example programm is just `Hello World!`. For complex programs you may need
 to add more dependencies in build container.
@@ -23,60 +23,30 @@ I relied on Debian's excellent cross-compilation support (see the Dockerfile),
 but with some elbow grease, you can compile the program for other architectures
 and operating systems.
 
-Build:
+**Build**
+
+Run:
 
 ```
-docker build . -t vlang-cross:latest-trixie
+./make.vsh
 ```
+
+make.vsh script will build the Docker image and run crosscompile.vsh inside
+a container.
 
 The container image is large (almost 3GiB) due to the number of libraries
 required for cross-compilation. The size could actually be reduced, but that's
 what Debian provides by default in the `crossbuild-essential-*` packages. For
 the same reason, building the image isn't very fast (up to ~3 minutes for me).
 
-Start cross-compilation:
+You may need change `docker_command` in `make.vsh` to `sudo docker` if your
+host user does not have access to Docker daemon.
 
-```
-docker run --rm -v .:/app vlang-cross:latest-trixie env DEBUG=1 ./make.vsh
-```
-
-then look inside `release/` dir (:
-
-## Synopsis
-
-You can run the make.vsh script in two ways:
-
-```
-./make.vsh
-# or
-v run make.vsh
-```
-
-```
-Build script options:
-  -tasks    List available tasks.
-  -help     Print this help message and exit. Aliases: help, --help.
-
-Build can be configured throught environment variables:
-
-  BUILD_PROG_NAME       Name of the compiled program. By default the name is
-                        parsed from v.mod.
-  BUILD_PROG_VERSION    Version of the compiled program. By default the name
-                        is parsed from v.mod.
-  BUILD_PROG_ENTRYPOINT The program entrypoint. Defaults to '.' (current dir).
-  BUILD_OUTPUT_DIR      The directory where the build artifacts will be placed.
-                        Defaults to './release'.
-  BUILD_SKIP_TARGETS    List of build targets to skip. Expects comma-separated
-                        list without whitespaces e.g. 'windows-amd64,linux-armhf'
-  BUILD_COMMON_VFLAGS   The list of V flags is common for all targets. Expects
-                        comma-separated list. Default is '-prod,-cross'.
-  BUILD_COMMON_CFLAGS   Same as BUILD_COMMON_VFLAGS, but passed to underlying
-                        C compiler. Default is '-static'.
-  DEBUG                 If set enables the verbose output as dimmed text.
-```
+Look inside `release/` dir after compilation (:
 
 ## See Also
 
+* [MANUAL.md](MANUAL.md) in this repository.
 * `v help build`
 * `v help build-c`
 * https://docs.vlang.io/cross-compilation.html
