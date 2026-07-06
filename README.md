@@ -49,6 +49,7 @@ Look inside `release/` dir after compilation (:
 * [MANUAL.md](MANUAL.md) in this repository.
 * `v help build`
 * `v help build-c`
+* Examples in https://github.com/gechandesu/releasekit
 * https://docs.vlang.io/cross-compilation.html
 * https://wiki.debian.org/CrossCompiling
 * https://en.wikipedia.org/wiki/Cross_compiler#GCC_and_cross_compilation
